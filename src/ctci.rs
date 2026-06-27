@@ -1,1 +1,1 @@
-pub mod array_and_strings;
+pub mod arrays_and_strings;
