@@ -2,10 +2,10 @@
 Assumptions:
 Assume all input string use only the 128 standard ASCII characters.
 To have ASCII-only strings in rust the ascii module is used so that the input
-has to respect the assumption.
+has to follow the assumption.
 */
 
-use ascii::{AsciiChar, AsciiStr};
+use ascii::{AsciiChar, AsciiStr, AsciiString};
 
 /* Function that returns true if a string has all unique characters and false if not.
 If an empty string is given, the function returns true.
@@ -127,8 +127,67 @@ pub fn one_away(s1: &AsciiStr, s2: &AsciiStr) -> bool {
     true
 }
 
-/*Function to compress a string by substituting repeated chars with the count.
-Assumes as input only lowercase chars and no special symbols.
+/* Function to compress a string by substituting repeated chars with the count.
+Filters out all non-alphabetical characters from the input strings.
+If there is no advantage in compression length, return original string.
+Time: O(N), Space: O(N)
+*/
+pub fn string_compression(string: &AsciiStr) -> AsciiString {
+    fn num_digits(mut n: usize) -> usize {
+        let mut count = 0;
+        while n > 0 {
+            count += 1;
+            n /= 10;
+        }
+        count.max(1)
+    }
+    let mut runs: Vec<(AsciiChar, usize)> = Vec::new();
+    let mut valid_char_count = 0;
+    let filtered_chars = string
+        .as_slice()
+        .iter()
+        .copied()
+        .filter(|ch| ch.as_char().is_ascii_alphabetic());
+    for ch in filtered_chars {
+        valid_char_count += 1;
+        match runs.last_mut() {
+            Some((last_ch, count)) if *last_ch == ch => *count += 1,
+            _ => runs.push((ch, 1)),
+        }
+    }
+    if runs.is_empty() {
+        return AsciiString::new();
+    }
+    let compressed_len: usize = runs.iter().map(|&(_, count)| 1 + num_digits(count)).sum();
+    if compressed_len >= valid_char_count {
+        let mut original = AsciiString::with_capacity(valid_char_count);
+        for (ch, count) in runs {
+            for _ in 0..count {
+                original.push(ch);
+            }
+        }
+        return original;
+    }
+    let mut compressed = AsciiString::with_capacity(compressed_len);
+    for (ch, count) in runs {
+        compressed.push(ch);
+        compressed.push_str(&AsciiString::from_ascii(count.to_string()).unwrap());
+    }
+    compressed
+}
+
+/* Function to rotate by 90 degrees a NxN matrix of integer values.
+The rotation is done in-place to save memory.
+Time: O(), Space: O()
+*/
+
+/* Function that given a MxN matrix sets rows and columns to 0 where a 0
+element is present.
+Time: O(), Space: O()
+*/
+
+/* Function to check if a string s1 is a rotation of another.
+Time: O(), Space: O()
 */
 
 // =============================== Test suite ===============================
@@ -242,6 +301,35 @@ mod tests {
             let a1 = AsciiStr::from_ascii(s1).unwrap();
             let a2 = AsciiStr::from_ascii(s2).unwrap();
             assert_eq!(one_away(a1, a2), expected);
+        }
+    }
+
+    #[test]
+    fn test_string_compression() {
+        let test_cases = &[
+            ("aabcccccaaa", "a2b1c5a3"),
+            ("aabbbbccc", "a2b4c3"),
+            ("abc", "abc"),
+            ("aabb", "aabb"),
+            ("aA", "aA"),
+            ("", ""),
+            ("a", "a"),
+            ("a!b?c", "abc"),
+            ("a b b c c c", "abbccc"),
+            ("a b b b c c c", "a1b3c3"),
+            ("12345", ""),
+        ];
+
+        for &(input, expected) in test_cases {
+            let ascii_input = AsciiStr::from_ascii(input).unwrap();
+            let expected_ascii = AsciiString::from_ascii(expected).unwrap();
+
+            assert_eq!(
+                string_compression(ascii_input),
+                expected_ascii,
+                "Test failed for input string: '{}'",
+                input
+            );
         }
     }
 }
